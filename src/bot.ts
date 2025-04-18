@@ -12,8 +12,8 @@ import {registerBlockTools} from "./tools/registerBlockTools.js";
 import {registerEntityTools} from "./tools/registerEntityTools.js";
 import {registerChatTools} from "./tools/registerChatTools.js";
 import {CmdArgs} from "./models/CmdArgs.js";
-
-import {mineflayer as mineflayerViewer} from 'prismarine-viewer';
+// @ts-expect-error because there's no definitions for this
+import inventoryViewer from 'mineflayer-web-inventory';
 
 const {pathfinder, Movements} = pathfinderPkg;
 
@@ -61,11 +61,8 @@ function setupBot(argv: CmdArgs) {
         console.error(`Bot error: ${err.message}`);
     });
 
-    bot.once('spawn', () => {
-        mineflayerViewer(bot, {
-            port: 3007,
-            firstPerson: true
-        })
+    inventoryViewer(bot, {
+        port: 3006
     });
 
     return bot;

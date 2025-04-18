@@ -19,7 +19,7 @@
     "minecraft-data": "^3.85.0",
     "mineflayer": "^4.27.0",
     "mineflayer-pathfinder": "^2.4.2",
-    "prismarine-viewer": "^1.33.0",
+    "mineflayer-web-inventory": "^1.8.5",
     "vec3": "^0.1.8",
     "yargs": "^17.7.2",
     "zod": "^3.24.2"
