@@ -50,7 +50,7 @@ export function registerInventoryTools(server: McpServer, bot: mineflayer.Bot) {
             try {
                 const items = bot.inventory.items();
                 const item = items.find((item) =>
-                    item.name.includes(nameOrType.toLowerCase())
+                    item.name.toLowerCase().includes(nameOrType.toLowerCase()) || item.displayName.toLowerCase().includes(nameOrType.toLowerCase()),
                 );
 
                 if (item) {
@@ -103,7 +103,7 @@ export function registerInventoryTools(server: McpServer, bot: mineflayer.Bot) {
                     matching: block => block.name === "minecraft:crafting_table"
                 });
 
-                const item = mcData.itemsByName[itemName];
+                const item = mcData.itemsArray.find(i => i.displayName.toLowerCase().includes(itemName.toLowerCase()) || i.name.toLowerCase().includes(itemName.toLowerCase()));
                 if (!item) {
                     return createErrorResponse(`Item with name ${itemName} does not exist.`);
                 }

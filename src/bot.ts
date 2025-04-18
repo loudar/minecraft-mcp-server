@@ -2,7 +2,7 @@
 
 import {McpServer} from "@modelcontextprotocol/sdk/server/mcp.js";
 import {StdioServerTransport} from "@modelcontextprotocol/sdk/server/stdio.js";
-import mineflayer from 'mineflayer';
+import mineflayer, {BotOptions} from 'mineflayer';
 import pathfinderPkg from 'mineflayer-pathfinder';
 import minecraftData from 'minecraft-data';
 import {registerInventoryTools} from "./tools/registerInventoryTools.js";
@@ -21,11 +21,12 @@ const {pathfinder, Movements} = pathfinderPkg;
 
 function setupBot(argv: CmdArgs) {
     // Configure bot options based on command line arguments
-    const botOptions = {
+    const botOptions = <BotOptions>{
         host: argv.host,
         port: argv.port,
         username: argv.username,
-        plugins: {pathfinder}
+        plugins: {pathfinder},
+        version: "1.21.4",
     };
 
     // Log connection information
