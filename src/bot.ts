@@ -13,6 +13,8 @@ import {registerEntityTools} from "./tools/registerEntityTools.js";
 import {registerChatTools} from "./tools/registerChatTools.js";
 import {CmdArgs} from "./models/CmdArgs.js";
 
+import {mineflayer as mineflayerViewer} from 'prismarine-viewer';
+
 const {pathfinder, Movements} = pathfinderPkg;
 
 // ========== Bot Setup ==========
@@ -41,7 +43,7 @@ function setupBot(argv: CmdArgs) {
         const defaultMove = new Movements(bot, mcData);
         bot.pathfinder.setMovements(defaultMove);
 
-        bot.chat('Claude-powered bot ready to receive instructions!');
+        bot.chat('MCP-powered bot ready to receive instructions!');
     });
 
     // Register common event handlers
@@ -56,6 +58,13 @@ function setupBot(argv: CmdArgs) {
 
     bot.on('error', (err) => {
         console.error(`Bot error: ${err.message}`);
+    });
+
+    bot.once('spawn', () => {
+        mineflayerViewer(bot, {
+            port: 3007,
+            firstPerson: true
+        })
     });
 
     return bot;
