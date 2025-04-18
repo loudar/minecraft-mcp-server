@@ -1,0 +1,1 @@
+export type FaceDirection = 'up' | 'down' | 'north' | 'south' | 'east' | 'west';
