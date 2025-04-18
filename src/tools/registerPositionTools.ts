@@ -10,7 +10,7 @@ import pathfinder from 'mineflayer-pathfinder';
 export function registerPositionTools(server: McpServer, bot: mineflayer.Bot) {
     server.tool(
         "get-position",
-        "Get the current position of the bot",
+        "Get your current position/coordinates within the world.",
         {},
         async (): Promise<McpResponse> => {
             try {
@@ -21,7 +21,7 @@ export function registerPositionTools(server: McpServer, bot: mineflayer.Bot) {
                     z: Math.floor(position.z)
                 };
 
-                return createResponse(`Current position: (${pos.x}, ${pos.y}, ${pos.z})`);
+                return createResponse(`Current position: ${JSON.stringify(pos)}`);
             } catch (error) {
                 return createErrorResponse(error as Error);
             }
@@ -30,7 +30,7 @@ export function registerPositionTools(server: McpServer, bot: mineflayer.Bot) {
 
     server.tool(
         "move-to-position",
-        "Move the bot to a specific position",
+        "Move to a specific position",
         {
             x: z.number().describe("X coordinate"),
             y: z.number().describe("Y coordinate"),

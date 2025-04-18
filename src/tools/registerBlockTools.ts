@@ -18,6 +18,47 @@ const possibleFaces: FaceOption[] = [
     {direction: 'up', vector: new Vec3(0, 1, 0)}
 ];
 
+async function placeBlock(bot: mineflayer.Bot, faceDirection: FaceDirection = "down", x: number, y: number, z: number) {
+    const placePos = new Vec3(x, y, z);
+    const blockAtPos = bot.blockAt(placePos);
+    if (blockAtPos && blockAtPos.name !== 'air') {
+        return createResponse(`There's already a block (${blockAtPos.name}) at (${x}, ${y}, ${z})`);
+    }
+
+    // Prioritize the requested face direction
+    if (faceDirection !== 'down') {
+        const specificFace = possibleFaces.find(face => face.direction === faceDirection);
+        if (specificFace) {
+            possibleFaces.unshift(possibleFaces.splice(possibleFaces.indexOf(specificFace), 1)[0]);
+        }
+    }
+
+    // Try each potential face for placing
+    for (const face of possibleFaces) {
+        const referencePos = placePos.plus(face.vector);
+        const referenceBlock = bot.blockAt(referencePos);
+
+        if (referenceBlock && referenceBlock.name !== 'air') {
+            if (!bot.canSeeBlock(referenceBlock)) {
+                // Try to move closer to see the block
+                const goal = new pathfinder.goals.GoalNear(referencePos.x, referencePos.y, referencePos.z, 2);
+                await bot.pathfinder.goto(goal);
+            }
+
+            await bot.lookAt(placePos, true);
+
+            try {
+                await bot.placeBlock(referenceBlock, face.vector.scaled(-1));
+                return true;
+            } catch (placeError) {
+                console.error(`Failed to place using ${face.direction} face: ${(placeError as Error).message}`);
+            }
+        }
+    }
+
+    return false;
+}
+
 export function registerBlockTools(server: McpServer, bot: mineflayer.Bot) {
     const mcData = minecraftData(bot.version);
 
@@ -37,44 +78,51 @@ export function registerBlockTools(server: McpServer, bot: mineflayer.Bot) {
             faceDirection?: FaceDirection
         }): Promise<McpResponse> => {
             try {
-                const placePos = new Vec3(x, y, z);
-                const blockAtPos = bot.blockAt(placePos);
-                if (blockAtPos && blockAtPos.name !== 'air') {
-                    return createResponse(`There's already a block (${blockAtPos.name}) at (${x}, ${y}, ${z})`);
+                if (await placeBlock(bot, faceDirection, x, y, z)) {
+                    return createResponse(`Placed block at (${x}, ${y}, ${z}) using ${faceDirection} face`);
                 }
 
-                // Prioritize the requested face direction
-                if (faceDirection !== 'down') {
-                    const specificFace = possibleFaces.find(face => face.direction === faceDirection);
-                    if (specificFace) {
-                        possibleFaces.unshift(possibleFaces.splice(possibleFaces.indexOf(specificFace), 1)[0]);
+                return createResponse(`Failed to place block at (${x}, ${y}, ${z}): No adjacent block, try a different coordinate first or move if you're standing inside it`);
+            } catch (error) {
+                return createErrorResponse(error as Error);
+            }
+        }
+    );
+
+    server.tool(
+        "place-blocks",
+        "Place multiple blocks at specific positions. Coordinates must be absolute and should be close to you so you can actually reach them.",
+        {
+            positions: z.array(z.strictObject({
+                x: z.number().describe("X coordinate"),
+                y: z.number().describe("Y coordinate"),
+                z: z.number().describe("Z coordinate"),
+            }))
+        },
+        async ({positions}: { positions: { x: number, y: number, z: number }[] }): Promise<McpResponse> => {
+            try {
+                console.log(positions);
+                const positionsLeft = structuredClone(positions);
+                const maxIterations = positions.length * 10;
+                let i = 0;
+                while (positionsLeft.length > 0) {
+                    i++;
+                    const pos = positionsLeft.shift();
+                    if (!pos) {
+                        break;
+                    }
+                    if (!await placeBlock(bot, "down", pos.x, pos.y, pos.z)) {
+                        if (i > maxIterations) {
+                            break;
+                        }
+                        positionsLeft.push(pos);
                     }
                 }
-
-                // Try each potential face for placing
-                for (const face of possibleFaces) {
-                    const referencePos = placePos.plus(face.vector);
-                    const referenceBlock = bot.blockAt(referencePos);
-
-                    if (referenceBlock && referenceBlock.name !== 'air') {
-                        if (!bot.canSeeBlock(referenceBlock)) {
-                            // Try to move closer to see the block
-                            const goal = new pathfinder.goals.GoalNear(referencePos.x, referencePos.y, referencePos.z, 2);
-                            await bot.pathfinder.goto(goal);
-                        }
-
-                        await bot.lookAt(placePos, true);
-
-                        try {
-                            await bot.placeBlock(referenceBlock, face.vector.scaled(-1));
-                            return createResponse(`Placed block at (${x}, ${y}, ${z}) using ${face.direction} face`);
-                        } catch (placeError) {
-                            console.error(`Failed to place using ${face.direction} face: ${(placeError as Error).message}`);
-                        }
-                    }
+                if (positionsLeft.length > 0) {
+                    return createErrorResponse(`Could not place blocks at ${JSON.stringify(positionsLeft)}`);
                 }
 
-                return createResponse(`Failed to place block at (${x}, ${y}, ${z}): No adjacent block, try a different coordinate first`);
+                return createResponse(`Places blocks at desired positions`);
             } catch (error) {
                 return createErrorResponse(error as Error);
             }
