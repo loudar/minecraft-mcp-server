@@ -9,7 +9,18 @@ import {createErrorResponse, createResponse} from "../responseHelpers.js";
 import {FaceOption} from "../models/FaceOption.js";
 import minecraftData from "minecraft-data";
 
+const possibleFaces: FaceOption[] = [
+    {direction: 'down', vector: new Vec3(0, -1, 0)},
+    {direction: 'north', vector: new Vec3(0, 0, -1)},
+    {direction: 'south', vector: new Vec3(0, 0, 1)},
+    {direction: 'east', vector: new Vec3(1, 0, 0)},
+    {direction: 'west', vector: new Vec3(-1, 0, 0)},
+    {direction: 'up', vector: new Vec3(0, 1, 0)}
+];
+
 export function registerBlockTools(server: McpServer, bot: mineflayer.Bot) {
+    const mcData = minecraftData(bot.version);
+
     server.tool(
         "place-block",
         "Place a block at the specified position",
@@ -31,15 +42,6 @@ export function registerBlockTools(server: McpServer, bot: mineflayer.Bot) {
                 if (blockAtPos && blockAtPos.name !== 'air') {
                     return createResponse(`There's already a block (${blockAtPos.name}) at (${x}, ${y}, ${z})`);
                 }
-
-                const possibleFaces: FaceOption[] = [
-                    {direction: 'down', vector: new Vec3(0, -1, 0)},
-                    {direction: 'north', vector: new Vec3(0, 0, -1)},
-                    {direction: 'south', vector: new Vec3(0, 0, 1)},
-                    {direction: 'east', vector: new Vec3(1, 0, 0)},
-                    {direction: 'west', vector: new Vec3(-1, 0, 0)},
-                    {direction: 'up', vector: new Vec3(0, 1, 0)}
-                ];
 
                 // Prioritize the requested face direction
                 if (faceDirection !== 'down') {
@@ -72,7 +74,7 @@ export function registerBlockTools(server: McpServer, bot: mineflayer.Bot) {
                     }
                 }
 
-                return createResponse(`Failed to place block at (${x}, ${y}, ${z}): No suitable reference block found`);
+                return createResponse(`Failed to place block at (${x}, ${y}, ${z}): No adjacent block, try a different coordinate first`);
             } catch (error) {
                 return createErrorResponse(error as Error);
             }
@@ -144,7 +146,6 @@ export function registerBlockTools(server: McpServer, bot: mineflayer.Bot) {
         },
         async ({blockType, maxDistance = 16}): Promise<McpResponse> => {
             try {
-                const mcData = minecraftData(bot.version);
                 const blocksByName = mcData.blocksByName;
 
                 if (!blocksByName[blockType]) {
@@ -163,6 +164,49 @@ export function registerBlockTools(server: McpServer, bot: mineflayer.Bot) {
                 }
 
                 return createResponse(`Found ${blockType} at position (${block.position.x}, ${block.position.y}, ${block.position.z})`);
+            } catch (error) {
+                return createErrorResponse(error as Error);
+            }
+        }
+    );
+
+    server.tool(
+        "find-blocks",
+        "Find multiple blocks of a specific type. Can also help if you don't know where blocks are that you could place against.",
+        {
+            blockType: z.string().describe("Type of block to find. Use 'all' if you just want to find where blocks are."),
+            maxDistance: z.number().optional().describe("Maximum search distance (default: 16)"),
+            count: z.number().optional().describe("Amount of blocks to find"),
+        },
+        async ({blockType, maxDistance = 16, count = 2}): Promise<McpResponse> => {
+            try {
+                let blocks = [];
+                if (blockType === 'all') {
+                    blocks = bot.findBlocks({
+                        matching: block => block.name !== "air",
+                        maxDistance,
+                        count
+                    });
+                } else {
+                    const blocksByName = mcData.blocksByName;
+
+                    if (!blocksByName[blockType]) {
+                        return createResponse(`Unknown block type: ${blockType}`);
+                    }
+
+                    const blockId = blocksByName[blockType].id;
+                    blocks = bot.findBlocks({
+                        matching: blockId,
+                        maxDistance,
+                        count,
+                    });
+                }
+
+                if (blocks.length === 0) {
+                    return createResponse(`No ${blockType} found within ${maxDistance} blocks`);
+                }
+
+                return createResponse(`Found ${blockType} at the following locations: [${blocks.map(v => JSON.stringify(v)).join(", ")}]`);
             } catch (error) {
                 return createErrorResponse(error as Error);
             }
